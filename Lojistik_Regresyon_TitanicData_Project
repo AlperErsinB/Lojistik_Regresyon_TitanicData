@@ -1,0 +1,333 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import warnings
+warnings.filterwarnings('ignore')
+
+%matplotlib inline
+
+
+
+# CSV data'yı bir DataFrame içine al
+train_df = pd.read_csv("data/train.csv")
+
+
+
+# train data
+train_df.head()
+
+
+
+# train data içindeki eksik değerlere bakalım
+
+train_df.isnull().sum()
+
+
+
+# Age (yaş) için eksik değerlerin oranı
+
+train_df['Age'].isnull().sum() / train_df.shape[0] * 100
+
+
+ax = train_df['Age'].hist(bins=15, density=True, stacked=True, alpha=0.7)
+
+train_df['Age'].plot(kind='density')
+
+ax.set(xlabel='Age')
+plt.xlim(0, 90)
+plt.grid()
+plt.show()
+
+
+# mean -> ortalama
+# skipna -> eksik verileri es geç (skip)
+
+train_df['Age'].mean(skipna=True)
+
+
+
+# median -> ortanca
+# skipna -> eksik verileri es geç (skip)
+
+train_df['Age'].median(skipna=True)
+
+
+
+# Cabin için eksik değerler oranı
+
+train_df['Cabin'].isnull().sum() / train_df.shape[0] * 100
+
+
+
+# yolcuların nereden bindiklerine bakalım
+
+print('Yolcuların hangi limandan bindikleri % olarak: (C = Cherbourg, Q = Queenstown, S = Southampton):')
+print(train_df['Embarked'].value_counts() / train_df.shape[0] * 100)
+
+
+
+
+# grafik ile de görelim
+
+sns.countplot(x='Embarked', data=train_df, palette='Set1')
+plt.show()
+
+
+
+# en fazla binilen limanı bulalım -> idmax()
+
+print('En fazla binilen liman: ', train_df['Embarked'].value_counts().idxmax())
+
+
+
+
+# önce orijinal verimizi kopyalayalım
+
+train_data = train_df.copy()
+
+
+
+# Age -> eksikleri median ile dolduralım -> fillna()
+
+train_data["Age"].fillna(train_df["Age"].median(skipna=True), inplace=True)
+
+
+
+# Embarked -> eksikleri 'S' ile dolduralım
+
+train_data["Embarked"].fillna(train_df['Embarked'].value_counts().idxmax(), inplace=True)
+
+
+
+# Cabin -> bu sütunu çıkaralım -> drop
+
+train_data.drop('Cabin', axis=1, inplace=True)
+
+
+
+# şimdi bu ayarlamalardan sonra train_data'da eksik veri var mı bakalım
+
+train_data.isnull().sum()
+
+
+
+
+# SibSp ve Parch'a bakıp eğer ikisinin toplamı sıfır'dan büyükse o zaman yanlız seyahat etmiyordur -> 0
+# diyeceğiz
+# eğer toplamları sıfır ise o zaman yanlız seyahat ediyordur -> 1
+
+train_data['YalnizSeyahat'] = np.where((train_data["SibSp"] + train_data["Parch"]) > 0, 0, 1)
+
+
+
+
+# SibSp ve Parch sütunlarını atalım
+
+train_data.drop('SibSp', axis=1, inplace=True)
+
+train_data.drop('Parch', axis=1, inplace=True)
+
+
+
+
+# get_dummies() ile encode edelim
+
+train_data = pd.get_dummies(train_data, columns=["Pclass","Embarked","Sex"], drop_first=True)
+
+
+
+
+train_data.head()
+
+
+
+train_data.drop('PassengerId', axis=1, inplace=True)
+train_data.drop('Name', axis=1, inplace=True)
+train_data.drop('Ticket', axis=1, inplace=True)
+
+
+train_data.head()
+
+
+
+# train datanın şekli
+
+train_data.shape
+
+
+
+# train data içindeki toplam veri adedi
+
+print("train data içindeki toplam veri adedi:", train_data.shape[0])
+
+
+
+
+# sütun adları -> train
+
+col_names = train_data.columns
+
+col_names
+
+
+
+plt.figure(figsize=(15,8))
+
+# Hayatta kalanlar -> Survived == 1
+# https://seaborn.pydata.org/generated/seaborn.kdeplot.html
+ax = sns.kdeplot(train_data["Age"][train_data.Survived == 1], color="green", shade=True)
+
+# Ölenler -> Survived == 0
+sns.kdeplot(train_data["Age"][train_data.Survived == 0], color="red", shade=True)
+
+plt.legend(['Survived', 'Died'])
+plt.title('Yaş (Age) için Hayatta Kalma ve Ölüm Yoğunluk Grafiği')
+ax.set(xlabel='Age')
+plt.xlim(-10,85)
+plt.show()
+
+
+
+
+plt.figure(figsize=(15,8))
+
+ax = sns.kdeplot(train_data["Fare"][train_data.Survived == 1], color="green", shade=True)
+
+sns.kdeplot(train_data["Fare"][train_data.Survived == 0], color="red", shade=True)
+
+plt.legend(['Survived', 'Died'])
+plt.title('Density Plot of Fare for Surviving Population and Deceased Population')
+ax.set(xlabel='Fare')
+plt.xlim(-20,200)
+plt.show()
+
+
+
+
+sns.barplot('Pclass', 'Survived', data=train_df, color="green")
+
+plt.show()
+
+
+sns.barplot('YalnizSeyahat', 'Survived', data=train_data, color="green")
+
+plt.show()
+
+
+
+sns.barplot('Sex', 'Survived', data=train_df, color="green")
+
+plt.show()
+
+
+
+y = train_data['Survived']
+
+
+train_data.drop('Survived', axis=1, inplace=True)
+
+
+
+# train datayı görelim
+
+train_data.describe()
+
+
+cols = train_data.columns
+
+cols
+
+
+
+
+from sklearn.preprocessing import MinMaxScaler
+
+scaler = MinMaxScaler()
+
+# scaler'ı train data üzerinde eğitelim ve 
+# train datayı scale edelim
+train_data = scaler.fit_transform(train_data)
+
+
+
+
+type(train_data)
+
+
+
+
+# datayı DataFrame yapalım tekrar
+
+train_data = pd.DataFrame(train_data, columns=[cols])
+
+
+
+from sklearn.model_selection import train_test_split
+
+
+
+# datayı artık gerçek olarak train-test şeklinde ayırabiliriz
+# test size: %20 olsun
+
+X_train, X_test, y_train, y_test = train_test_split(train_data, y, test_size=0.2, random_state=2)
+
+
+
+
+X_train.shape
+
+
+X_test.shape
+
+
+y_train
+
+
+
+y_test
+
+
+# LogisticRegression'u import et
+
+from sklearn.linear_model import LogisticRegression
+
+
+
+# modeli yarat
+
+logreg = LogisticRegression(solver='liblinear', random_state=0)
+
+
+
+# train data üzerinde LogisticRegression'u eğit
+
+logreg.fit(X_train, y_train)
+
+
+
+# test data ile tahmin yap
+
+y_pred = logreg.predict(X_test)
+
+y_pred
+
+
+# 0 sınıfı -> ölüm (Servived = 0)
+
+logreg.predict_proba(X_test)[:,0]
+
+
+
+# 1 sınıfı -> hayatta kalma (Servived = 1)
+
+logreg.predict_proba(X_test)[:,1]
+
+
+
+from sklearn.metrics import accuracy_score
+
+print("Modelin Accuracy Score'u: {0:0.4f}".format(accuracy_score(y_test, y_pred)))
+
+
